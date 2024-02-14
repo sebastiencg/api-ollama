@@ -14,6 +14,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class VecteurController extends AbstractController
 {
+
+
     #[Route('/vecteur', name: 'app_vecteur')]
     public function index(): Response
     {
