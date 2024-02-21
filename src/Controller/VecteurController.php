@@ -169,6 +169,7 @@ class VecteurController extends AbstractController
             $entityManager->persist($newMotDuJour);
 
             $entityManager->flush();
+
             return $mot;
         }else{
             $addMot = new Mot();
