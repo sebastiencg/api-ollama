@@ -76,7 +76,7 @@ class VecteurController extends AbstractController
 
     public function motDuJour($motDuJourRepository, $motRepository, $entityManager, $takeVecteur, $httpClient, $randomMot)
     {
-        /*
+
         $dernierMot = $motDuJourRepository->findOneBy([], ['id' => 'DESC']);
 
         if ($dernierMot){
@@ -93,11 +93,11 @@ class VecteurController extends AbstractController
                 return $dernierMot->getMot();
             }
         }
-*/
 
         $apiMot=$randomMot->random();
 
         if (!$apiMot){
+
             $motFrancais = [
                 "chat", "chien", "maison", "arbre", "fleur", "soleil", "pluie", "nuage", "montagne", "rivière",
                 "voiture", "vélo", "avion", "train", "bateau", "mer", "lac", "forêt", "prairie", "plage",
@@ -187,6 +187,15 @@ class VecteurController extends AbstractController
                     $entityManager->persist($newVecteur);
                 }
             }
+
+            $newMotDuJour= new MotDuJour();
+
+            $newMotDuJour->setMot($addMot);
+
+            $newMotDuJour->setCreatedAt(new \DateTimeImmutable());
+
+            $entityManager->persist($newMotDuJour);
+
             $entityManager->flush();
 
             return $addMot;
