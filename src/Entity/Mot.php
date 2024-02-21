@@ -21,9 +21,13 @@ class Mot
     #[ORM\OneToMany(targetEntity: Vecteur::class, mappedBy: 'mot')]
     private Collection $vecteurs;
 
+    #[ORM\OneToMany(targetEntity: MotDuJour::class, mappedBy: 'mot')]
+    private Collection $motDuJours;
+
     public function __construct()
     {
         $this->vecteurs = new ArrayCollection();
+        $this->motDuJours = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -67,6 +71,36 @@ class Mot
             // set the owning side to null (unless already changed)
             if ($vecteur->getMot() === $this) {
                 $vecteur->setMot(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, MotDuJour>
+     */
+    public function getMotDuJours(): Collection
+    {
+        return $this->motDuJours;
+    }
+
+    public function addMotDuJour(MotDuJour $motDuJour): static
+    {
+        if (!$this->motDuJours->contains($motDuJour)) {
+            $this->motDuJours->add($motDuJour);
+            $motDuJour->setMot($this);
+        }
+
+        return $this;
+    }
+
+    public function removeMotDuJour(MotDuJour $motDuJour): static
+    {
+        if ($this->motDuJours->removeElement($motDuJour)) {
+            // set the owning side to null (unless already changed)
+            if ($motDuJour->getMot() === $this) {
+                $motDuJour->setMot(null);
             }
         }
 
