@@ -52,40 +52,42 @@ class ChatController extends AbstractController
         }
     }
 
-    #[Route('/chat/messages', name: 'app_get_messages')]
+    #[Route('/api/chat/messages', name: 'app_get_messages')]
     public function getMessages(): Response
     {
-        // check user connected
         $user = $this->getUser();
-        if (!$user) {return $this->json("No user connected", 200);}
+        if (!$user) {return $this->json("No user connected to get conversation", 200);}
 
-        $messages = $user->getProfile()->getResponse();
+        $conversationHistory = $user->getProfile()->getConversationHistory();
 
-        // Return messages
-        return $this->json($messages, 200);
+        return $this->json($conversationHistory, 200);
     }
 
-    #[Route('/chat/ask/pdf', name: 'app_file_ask')]
+
+    #[Route('/api/chat/ask/pdf', name: 'app_file_ask', methods: ['POST'])]
     public function chat(Request $request, Askia $service): Response
     {
         // check user connected
-        $user = $this->getUser()->getProfile();
-        if (!$user) {return $this->json("No user connected", 200);}
+        $user = $this->getUser();
+        if (!$user) {return $this->json("No user connected to send prompt", 200);}
 
-
-        // Get Prompt, Check if prompt
+        // Get Messages, Check if messages
         $jsonData = json_decode($request->getContent(), true);
-        $userPrompt = $jsonData['prompt'] ?? null;
-        if (!$userPrompt) {return $this->json("Pas de prompt reçu", 200);}
-
+        $userMessages = $jsonData['messages'] ?? null;
+        if (!$userMessages || !is_array($userMessages)) {return $this->json("No messages received", 200);}
 
         // Call service
-        $response = $service->sendPrompt($userPrompt);
+        $response = $service->sendPrompt($userMessages);
+        
+        // Add messages and response to DB
+        foreach ($userMessages as $message) {
+            $user->getProfile()->addPromptAndResponseToConversation($message['content'], $response);
+        }
 
-        // Add question and response to DB
-        $user->getProfile()->addConversation($userPrompt, $response); // Assurez-vous d'implémenter cette méthode dans votre entité User.
+        $messageHistory = $user->getProfile()->getConversationHistory();
 
-        // Réponse
-        return $this->json($response, 200);
+        // Response
+        return $this->json($messageHistory, 200);
     }
+
 }

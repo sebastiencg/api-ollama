@@ -4,7 +4,6 @@ namespace App\Controller;
 
 use App\Entity\Profile;
 use App\Entity\User;
-use App\Form\RegistrationFormType;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -38,8 +37,6 @@ class RegistrationController extends AbstractController
 
         $profile= new Profile();
         $profile->setOfUser($user);
-        $profile->setUsername($user->getUsername());
-        $profile->setDisplayName(true);
         $entityManager->persist($profile);
         $entityManager->persist($user);
         $entityManager->flush();

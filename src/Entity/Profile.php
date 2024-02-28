@@ -21,9 +21,13 @@ class Profile
     #[ORM\OneToMany(targetEntity: Message::class, mappedBy: 'author')]
     private Collection $messages;
 
+    #[ORM\OneToMany(targetEntity: ConversationEntry::class, mappedBy: 'profile', orphanRemoval: true)]
+    private Collection $conversationEntries;
+
     public function __construct()
     {
         $this->messages = new ArrayCollection();
+        $this->conversationEntries = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -71,5 +75,62 @@ class Profile
         }
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, ConversationEntry>
+     */
+    public function getConversationEntries(): Collection
+    {
+        return $this->conversationEntries;
+    }
+
+    public function addConversationEntry(ConversationEntry $conversationEntry): static
+    {
+        if (!$this->conversationEntries->contains($conversationEntry)) {
+            $this->conversationEntries->add($conversationEntry);
+            $conversationEntry->setProfile($this);
+        }
+
+        return $this;
+    }
+
+    public function removeConversationEntry(ConversationEntry $conversationEntry): static
+    {
+        if ($this->conversationEntries->removeElement($conversationEntry)) {
+            // set the owning side to null (unless already changed)
+            if ($conversationEntry->getProfile() === $this) {
+                $conversationEntry->setProfile(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function addPromptAndResponseToConversation(string $question, string $response): static
+    {
+        $conversationEntry = new ConversationEntry();
+        $conversationEntry
+            ->setProfile($this)
+            ->setQuestion($question)
+            ->setResponse($response);
+
+        $this->addConversationEntry($conversationEntry);
+
+        return $this;
+    }
+
+    public function getConversationHistory(): array
+    {
+        $conversationHistory = [];
+
+        foreach ($this->getConversationEntries() as $entry) {
+            $conversationHistory[] = [
+                'question' => $entry->getQuestion(),
+                'response' => $entry->getResponse(),
+            ];
+        }
+
+        return $conversationHistory;
     }
 }
