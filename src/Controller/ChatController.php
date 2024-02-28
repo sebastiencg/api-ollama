@@ -65,7 +65,6 @@ class ChatController extends AbstractController
         return $this->json($messages, 200);
     }
 
-
     #[Route('/chat/ask/pdf', name: 'app_file_ask')]
     public function chat(Request $request, Askia $service): Response
     {
@@ -84,10 +83,9 @@ class ChatController extends AbstractController
         $response = $service->sendPrompt($userPrompt);
 
         // Add question and response to DB
-        $user->getProfile()->addMessage($userPrompt, $response); // Assurez-vous d'implémenter cette méthode dans votre entité User.
+        $user->getProfile()->addConversation($userPrompt, $response); // Assurez-vous d'implémenter cette méthode dans votre entité User.
 
         // Réponse
         return $this->json($response, 200);
     }
-
 }
