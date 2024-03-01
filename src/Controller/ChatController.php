@@ -2,36 +2,143 @@
 
 namespace App\Controller;
 
+use App\Entity\ConversationEntry;
+use App\Entity\Message;
+use App\Entity\Profile;
+use App\Entity\User;
+use App\Repository\ConversationRepository;
+use App\Repository\MessageRepository;
+use App\Repository\UserRepository;
 use App\Service\Askia;
 use App\Service\Chat;
 use App\Service\Conversation;
+use Doctrine\ORM\EntityManagerInterface;
+use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 
 class ChatController extends AbstractController
 {
-    #[Route('/chat/', name: 'app_chat', methods: ["POST"])]
-    public function index(Chat $chatService ,Request $request,Conversation $conversation,SessionInterface $session): Response
+    #[Route('/api/chat/', name: 'app_chat', methods: ["POST"])]
+    public function index(Chat $chatService ,Request $request,SessionInterface $session,SerializerInterface $serializer,UserRepository $userRepository,UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager, ConversationRepository $conversationRepository, PaginatorInterface $paginator,MessageRepository $messageRepository): Response
     {
 
-        $jsonData = json_decode($request->getContent(), true);
 
-        $userMessage = $jsonData['message'] ?? null;
+        $bot=$userRepository->findOneBy(["username"=>"bot"]);
+        if (!$bot){
+            $bot= new User();
+            $bot->setUsername("bot");
+            $bot->setPassword("superBotPassword");
+            $bot->setPassword(
+                $userPasswordHasher->hashPassword($bot,$bot->getPassword())
+            );
+
+            $profile= new Profile();
+            $profile->setOfUser($bot);
+            $entityManager->persist($profile);
+            $entityManager->persist($bot);
+        }
+        $userConversations=$this->getUser()->getProfile()->getConversations();
+        foreach ($userConversations as $conversationTab){
+
+            if (in_array($bot->getProfile(),$conversationTab->getProfile()->getValues())){
+                $conversation=$conversationTab;
+            }
+            else{
+                $conversation=null;
+            }
+        }
+        if (!$conversation){
+            $conversation = new \App\Entity\Conversation();
+            $conversation->addProfile($this->getUser()->getProfile());
+            $conversation->addProfile($bot->getProfile());
+            $entityManager->persist($conversation);
+            $entityManager->flush();
+            return $this->json([],Response::HTTP_OK,[],['groups'=>'conversation:read-all']);
+        }
+
+        return $this->json($conversation->getMessage(),Response::HTTP_OK,[],['groups'=>'conversation:read-all']);
 
 
-        if ($userMessage !== null) {
-            $conversation->addMessageToConversation('user',$userMessage,$session);
-            $response = $chatService->sendMessage($userMessage);
-            $conversation->addMessageToConversation($response["role"],$response["content"],$session);
-            return $this->json($response,Response::HTTP_OK);
+    }
+
+    #[Route('/api/chat/send', name: 'app_chat_send', methods: ["POST"])]
+    public function sendMessage(Chat $chatService ,Request $request,SessionInterface $session,SerializerInterface $serializer,UserRepository $userRepository,UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager, ConversationRepository $conversationRepository, PaginatorInterface $paginator,MessageRepository $messageRepository): Response
+    {
+
+
+        $json = $request->getContent();
+        $message = $serializer->deserialize($json, Message::class, 'json');
+
+        if ($message->getContent() !== null) {
+            $bot=$userRepository->findOneBy(["username"=>"bot"]);
+            if (!$bot){
+                $bot= new User();
+                $bot->setUsername("bot");
+                $bot->setPassword("superBotPassword");
+                $bot->setPassword(
+                    $userPasswordHasher->hashPassword($bot,$bot->getPassword())
+                );
+
+                $profile= new Profile();
+                $profile->setOfUser($bot);
+                $entityManager->persist($profile);
+                $entityManager->persist($bot);
+            }
+            $userConversations=$this->getUser()->getProfile()->getConversations();
+            foreach ($userConversations as $conversationTab){
+
+                if (in_array($bot->getProfile(),$conversationTab->getProfile()->getValues())){
+                    $conversation=$conversationTab;
+                }
+                else{
+                    $conversation=null;
+                }
+            }
+            $chat= $chatService->sendMessage($message->getContent());
+            if (!$conversation){
+                $conversation = new \App\Entity\Conversation();
+                $conversation->addProfile($this->getUser()->getProfile());
+                $conversation->addProfile($bot->getProfile());
+                $entityManager->persist($conversation);
+            }
+
+            $message->setAuthor($this->getUser()->getProfile());
+            $entityManager->persist($message);
+
+            $messageBot= new  Message();
+
+            $messageBot->setContent($chat["content"]);
+
+            $messageBot->setAuthor($bot->getProfile());
+
+            $entityManager->persist($messageBot);
+
+            $conversation->addMessage($message);
+
+
+            $conversation->addMessage($messageBot);
+
+            $entityManager->persist($conversation);
+
+            $entityManager->flush();
+            /*$pagination = $paginator->paginate(
+                $conversation,
+                $request->query->getInt('page', 1),
+                6
+            );*/
+            return $this->json($conversation->getMessage(),Response::HTTP_OK,[],['groups'=>'conversation:read-all']);
 
         }
 
         return $this->json("bad request",Response::HTTP_BAD_REQUEST);
     }
+
 
     #[Route('/upload', name: 'app_upload_file')]
     public function uploadFile(Request $request): Response

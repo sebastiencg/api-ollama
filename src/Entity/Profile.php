@@ -6,6 +6,7 @@ use App\Repository\ProfileRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: ProfileRepository::class)]
 class Profile
@@ -13,9 +14,13 @@ class Profile
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['conversation:read-all'])]
+
     private ?int $id = null;
 
     #[ORM\OneToOne(inversedBy: 'profile', cascade: ['persist', 'remove'])]
+    #[Groups(['conversation:read-all'])]
+
     private ?User $ofUser = null;
 
     #[ORM\OneToMany(targetEntity: Message::class, mappedBy: 'author')]
@@ -24,10 +29,14 @@ class Profile
     #[ORM\OneToMany(targetEntity: ConversationEntry::class, mappedBy: 'profile', orphanRemoval: true)]
     private Collection $conversationEntries;
 
+    #[ORM\ManyToMany(targetEntity: Conversation::class, mappedBy: 'profile')]
+    private Collection $conversations;
+
     public function __construct()
     {
         $this->messages = new ArrayCollection();
         $this->conversationEntries = new ArrayCollection();
+        $this->conversations = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -132,5 +141,32 @@ class Profile
         }
 
         return $conversationHistory;
+    }
+
+    /**
+     * @return Collection<int, Conversation>
+     */
+    public function getConversations(): Collection
+    {
+        return $this->conversations;
+    }
+
+    public function addConversation(Conversation $conversation): static
+    {
+        if (!$this->conversations->contains($conversation)) {
+            $this->conversations->add($conversation);
+            $conversation->addProfile($this);
+        }
+
+        return $this;
+    }
+
+    public function removeConversation(Conversation $conversation): static
+    {
+        if ($this->conversations->removeElement($conversation)) {
+            $conversation->removeProfile($this);
+        }
+
+        return $this;
     }
 }

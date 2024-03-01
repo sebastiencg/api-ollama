@@ -11,9 +11,11 @@ class Chat
     }
     public function sendMessage($text)
     {
+        $timeout = 120;
         $response = $this->httpClient->request('POST', 'http://10.9.64.10:1234/v1/chat/completions', [
             'headers' => [
                 'Content-Type' => 'application/json',
+                'timeout' => $timeout,
             ],
             'json' => [
                 'messages' => [
