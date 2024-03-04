@@ -188,7 +188,7 @@ class ChatController extends AbstractController
         $userMessages = $jsonData['messages'] ?? null;
         if (!$userMessages || !is_array($userMessages)) {return $this->json("No messages received", 200);}
 
-        // Call service
+        // Call service je suis test
         $response = $service->sendPrompt($userMessages);
         
         // Add messages and response to DB
