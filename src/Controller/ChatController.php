@@ -24,7 +24,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 
 class ChatController extends AbstractController
 {
-    #[Route('/api/chat/', name: 'app_chat', methods: ["POST"])]
+    #[Route('/api/chat/', name: 'app_chat', methods: ["GET"])]
     public function index(Chat $chatService ,Request $request,SessionInterface $session,SerializerInterface $serializer,UserRepository $userRepository,UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager, ConversationRepository $conversationRepository, PaginatorInterface $paginator,MessageRepository $messageRepository): Response
     {
 
@@ -44,6 +44,7 @@ class ChatController extends AbstractController
             $entityManager->persist($bot);
         }
         $userConversations=$this->getUser()->getProfile()->getConversations();
+        $conversation=null;
         foreach ($userConversations as $conversationTab){
 
             if (in_array($bot->getProfile(),$conversationTab->getProfile()->getValues())){
@@ -87,8 +88,10 @@ class ChatController extends AbstractController
 
                 $profile= new Profile();
                 $profile->setOfUser($bot);
+                $bot->setProfile($profile);
                 $entityManager->persist($profile);
                 $entityManager->persist($bot);
+                $entityManager->flush();
             }
             $userConversations=$this->getUser()->getProfile()->getConversations();
             foreach ($userConversations as $conversationTab){
@@ -100,6 +103,8 @@ class ChatController extends AbstractController
                     $conversation=null;
                 }
             }
+            $conversation=null;
+
             $chat= $chatService->sendMessage($message->getContent());
             if (!$conversation){
                 $conversation = new \App\Entity\Conversation();
