@@ -176,30 +176,76 @@ class ChatController extends AbstractController
     }
 
 
+
     #[Route('/api/chat/ask/pdf', name: 'app_file_ask', methods: ['POST'])]
-    public function chat(Request $request, Askia $service): Response
+    public function chat(Request $request, Askia $service, EntityManagerInterface $manager): Response
     {
         // check user connected
         $user = $this->getUser();
-        if (!$user) {return $this->json("No user connected to send prompt", 200);}
+        if (!$user) {return $this->json(["error" => "No user connected to send prompt"], 401);}
+
 
         // Get Messages, Check if messages
         $jsonData = json_decode($request->getContent(), true);
-        $userMessages = $jsonData['messages'] ?? null;
-        if (!$userMessages || !is_array($userMessages)) {return $this->json("No messages received", 200);}
+        $userMessage = $jsonData['message'] ?? null;
+        if (!$userMessage || !is_array($userMessage)) {return $this->json(["error" => "No messages received"], 400);}
 
-        // Call service je suis test
-        $response = $service->sendPrompt($userMessages);
-        
-        // Add messages and response to DB
-        foreach ($userMessages as $message) {
-            $user->getProfile()->addPromptAndResponseToConversation($message['content'], $response);
+
+
+
+        // voir si il y a un historique
+        $messageHistory = $user->getProfile()->getConversationHistory();
+
+        //dd($messageHistory);
+        //dd($userMessage[0]['content']);
+
+        if (empty($messageHistory)) {
+            $response = $service->sendPrompt($userMessage);
         }
+        else {
+            $history = [];
+
+            foreach ($messageHistory as $message) {
+                $history[] = ['role' => 'user', 'content' => $message["question"]];
+                $history[] = ['role' => 'assistant', 'content' => $message["response"]];
+            }
+
+            $history[] = ['role' => 'user', 'content' => $userMessage[0]['content']];
+
+            $response = $service->sendPrompt($history);
+        }
+
+
+
+        // add new message to DB
+        $messageConversation = new ConversationEntry();
+        $messageConversation->setProfile($user->getProfile());
+        $messageConversation->setQuestion($userMessage[0]['content']);
+        $messageConversation->setResponse($response['content']);
+
+
+        $manager->persist($messageConversation);
+        $manager->flush();
+
 
         $messageHistory = $user->getProfile()->getConversationHistory();
 
-        // Response
-        return $this->json($messageHistory, 200);
+
+        if (empty($messageHistory)) {
+            $responseData = [
+                'lastMessage' => $messageConversation,
+                'history' => $messageHistory,
+            ];
+            return $this->json($responseData, 200, [], ["groups"=>"display:history"]);
+        }
+        else {
+            $responseData = [
+                'lastMessage' => $messageConversation,
+                'history' => $messageHistory,
+            ];
+
+            return $this->json($responseData, 200, [], ["groups"=>"display:history"]);
+        }
     }
 
 }

@@ -15,12 +15,10 @@ class Profile
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['conversation:read-all'])]
-
     private ?int $id = null;
 
     #[ORM\OneToOne(inversedBy: 'profile', cascade: ['persist', 'remove'])]
     #[Groups(['conversation:read-all'])]
-
     private ?User $ofUser = null;
 
     #[ORM\OneToMany(targetEntity: Message::class, mappedBy: 'author')]
