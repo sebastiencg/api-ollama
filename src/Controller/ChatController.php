@@ -94,6 +94,7 @@ class ChatController extends AbstractController
                 $entityManager->flush();
             }
             $conversation=null;
+
             $userConversations=$this->getUser()->getProfile()->getConversations();
             foreach ($userConversations as $conversationTab){
 
