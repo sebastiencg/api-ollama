@@ -93,6 +93,7 @@ class ChatController extends AbstractController
                 $entityManager->persist($bot);
                 $entityManager->flush();
             }
+            $conversation=null;
             $userConversations=$this->getUser()->getProfile()->getConversations();
             foreach ($userConversations as $conversationTab){
 
@@ -103,7 +104,6 @@ class ChatController extends AbstractController
                     $conversation=null;
                 }
             }
-            $conversation=null;
 
             $chat= $chatService->sendMessage($message->getContent());
             if (!$conversation){

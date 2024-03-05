@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\ConversationEntryRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ConversationEntryRepository::class)]
 class ConversationEntry
@@ -14,12 +15,15 @@ class ConversationEntry
     #[ORM\Column]
     private ?int $id = null;
 
+    #[Groups(['display:history'])]
     #[ORM\Column(type: Types::TEXT)]
     private ?string $question = null;
 
+    #[Groups(['display:history'])]
     #[ORM\Column(type: Types::TEXT)]
     private ?string $response = null;
 
+    #[Groups(['display:history'])]
     #[ORM\ManyToOne(inversedBy: 'conversationEntries')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Profile $profile = null;
