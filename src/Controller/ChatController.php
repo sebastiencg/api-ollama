@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\ConversationEntry;
 use App\Entity\Message;
+use App\Entity\PdfInfo;
 use App\Entity\Profile;
 use App\Entity\User;
 use App\Repository\ConversationRepository;
@@ -12,8 +13,10 @@ use App\Repository\UserRepository;
 use App\Service\Askia;
 use App\Service\Chat;
 use App\Service\Conversation;
+use App\Service\ReadPdf;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
+use Spatie\PdfToText\Exceptions\PdfNotFound;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -146,20 +149,30 @@ class ChatController extends AbstractController
     }
 
 
-    #[Route('/upload', name: 'app_upload_file')]
-    public function uploadFile(Request $request): Response
+    /**
+     * @throws PdfNotFound
+     */
+    #[Route('/api/upload', name: 'app_upload_file',methods: ['POST'])]
+    public function uploadFile(Request $request, ReadPdf $readPdf,EntityManagerInterface $entityManager): Response
     {
         // Récupérer le fichier de la requête
         $file = $request->files->get('document');
 
         // Vérifier si un fichier a été envoyé
         if ($file) {
+
             // Déplacez le fichier vers le répertoire de votre choix
             $uploadsDirectory = $this->getParameter('kernel.project_dir') . '/public/uploads';
             $file->move($uploadsDirectory, $file->getClientOriginalName());
-
-            // Faites ce que vous voulez avec le fichier, par exemple, renvoyez une réponse JSON
-            return $this->json(['message' => 'Fichier reçu avec succès', 200]);
+            $routeFile=$uploadsDirectory."/".$file->getClientOriginalName();
+            $textPdf=$readPdf->extractPdfContent($routeFile);
+            $pdf=new PdfInfo();
+            $pdf->setName($file->getClientOriginalName());
+            $pdf->setText($textPdf);
+            $entityManager->persist($pdf);
+            $entityManager->flush();
+            unlink($routeFile);
+            return $this->json(['message' => 'Fichier reçu avec succès',"data"=>$pdf, 200]);
         } else {
             return $this->json(['error' => 'Aucun fichier n a été envoyé'], 400);
         }
@@ -245,6 +258,21 @@ class ChatController extends AbstractController
 
             return $this->json($responseData, 200, [], ["groups"=>"display:history"]);
         }
+    }
+
+
+    #[Route('/api/chat/read/pdf/{id}', name: 'app_chat_read_pdf', methods: ["POST"])]
+    public function readPdf(PdfInfo $pdfInfo,Request $request, SerializerInterface $serializer, Chat $chat): Response
+    {
+
+        $json = $request->getContent();
+        $message = $serializer->deserialize($json, Message::class, 'json');
+
+        $responseIa=$chat->sendMessagePdf($pdfInfo->getText(),$message->getContent());
+        return $this->json($responseIa,Response::HTTP_BAD_REQUEST);
+
+
+
     }
 
 }
