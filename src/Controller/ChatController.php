@@ -176,8 +176,6 @@ class ChatController extends AbstractController
         return $this->json($conversationHistory, 200);
     }
 
-
-
     #[Route('/api/chat/ask/pdf', name: 'app_file_ask', methods: ['POST'])]
     public function chat(Request $request, Askia $service, EntityManagerInterface $manager): Response
     {
